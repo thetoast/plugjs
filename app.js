@@ -21,6 +21,21 @@
             return localStorage["auto-woot"] === "true";
         }
 
+        function timestamp(seconds) {
+            var sec = seconds % 60;
+            var min = Math.floor((seconds / 60) % 60);
+            var hours = Math.floor((min / 60) % 60);
+
+            if (sec < 10) {
+                sec = "0" + sec;
+            }
+            if (min < 10) {
+                min = "0" + min;
+            }
+
+            return (hours ? (hours + ":") : "") + min + ":" + sec;
+        }
+
         API.on(API.CHAT_COMMAND, function (command) {
             if (command === "/?") {
                 API.chatLog("Commands:");
@@ -37,6 +52,15 @@
                 }
                 API.chatLog("AutoWoot: " + (autoWootEnabled() ? "enabled" : "disabled"));
                 
+            }
+        });
+        API.on(API.DJ_ADVANCE, function (data) {
+            if (data && data.media) {
+                var media = data.media;
+                window.postMessage({
+                    action: 'notify',
+                    message: "Now Playing: " + media.author + " - " + media.title + " (" + timestamp(media.duration) + ")"
+                }, "http://plug.dj");
             }
         });
 

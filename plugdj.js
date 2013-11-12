@@ -1,3 +1,19 @@
+window.addEventListener("message", function (msg) {
+    var data;
+    if (msg.data) {
+        data = msg.data;
+    } else {
+        data = {};
+    }
+
+    switch (data.action) {
+        case "notify":
+            chrome.extension.sendMessage(data);
+            break;
+    }
+        
+});
+
 $(document).on("ready", function () {
     if (window.plugDJLoaded) return;
 

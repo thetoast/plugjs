@@ -5,7 +5,11 @@
     "description": "A command line with custom tools and actions for plug.dj",
     "version": "1.0",
 
-    "permissions": [ "https://plug.dj/*", "http://plug.dj/*" ],
+    "permissions": [
+        "https://plug.dj/*",
+        "http://plug.dj/*",
+        "notifications"
+    ],
 
     "content_scripts": [
         {
@@ -18,7 +22,11 @@
         "jquery.js",
         "plugdj.js",
         "app.js"
-    ]
+    ],
+
+    "background": {
+        "scripts": [ "background.js" ]
+    }
 
     //"browser_action": {
     //  "default_icon": "icon.png",
