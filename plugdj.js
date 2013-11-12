@@ -7,9 +7,9 @@ $(document).on("ready", function () {
         if ($("#audience").length) {
             clearInterval(roomInterval);
             $.getScript(chrome.extension.getURL("app.js")).done(function () {
-                console.log("plugdj script loaded");
+                console.log("plugdj script injected");
             }).fail(function () {
-                console.log("could not load plugdj script");
+                console.log("could not inject plugdj script");
             });
         }
     }, 1000);
