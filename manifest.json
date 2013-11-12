@@ -1,0 +1,27 @@
+{
+    "manifest_version": 2,
+
+    "name": "plug.dj Tools",
+    "description": "A command line with custom tools and actions for plug.dj",
+    "version": "1.0",
+
+    "permissions": [ "https://plug.dj/*", "http://plug.dj/*" ],
+
+    "content_scripts": [
+        {
+            "matches": [ "http://plug.dj/*", "https://plug.dj/*" ],
+            "js": [ "jquery.js", "plugdj.js" ]
+        }
+    ],
+
+    "web_accessible_resources": [
+        "jquery.js",
+        "plugdj.js",
+        "app.js"
+    ]
+
+    //"browser_action": {
+    //  "default_icon": "icon.png",
+    //  "default_popup": "popup.html"
+    //}
+}
