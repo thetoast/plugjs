@@ -14,6 +14,7 @@ function timestamp(seconds) {
 }
 
 function App() {
+    this.user = API.getUser();
     this.registerCommands([
         {
             name: "autowoot",
@@ -22,12 +23,12 @@ function App() {
             help: "Call without parameters to get autowoot status.  Call with a 0 or 1 to disable/enable autowoot.",
             func: this.autoWoot
         },
-        //{
-        //    name: "leaveafter",
-        //    desc: "leave after your next track",
-        //    help: "Leaves the DJ booth or waiting list after you play your next song.  If you are currently playing, it will leave after this song.",
-        //    func: this.leaveafter
-        //},
+        {
+            name: "leaveafter",
+            desc: "leave after your next track",
+            help: "Leaves the DJ booth or waiting list after you play your next song.  If you are currently playing, it will leave after this song.",
+            func: this.leaveafter
+        },
         {
             name: "?",
             arg: "[cmd]",
@@ -55,6 +56,24 @@ App.prototype = Object.create(Object.prototype, {
             localStorage["auto-woot"] = val;
         }
     },
+    isCurrentDJ: {
+        get: function () {
+            var djs = API.getDJs();
+            if (djs.length) {
+                return this.user && this.user.id === djs[0].id;
+            } else {
+                return false;
+            }
+        },
+    },
+    isQueued: {
+        get: function () {
+            var self = this;
+            return API.getDJs().some(function (dj) {
+                return self.user.id && self.user.id === dj.id;
+            });
+        },
+    }
 });
 
 App.prototype.registerCommands= function (cmds) {
@@ -66,6 +85,7 @@ App.prototype.registerCommands= function (cmds) {
 
 App.prototype.addHooks = function () {
     var self = this;
+    // RM: this is probably not necessary since Backbone takes a context with the register
     function hookIt(event, fn) {
         API.on(event, function () {
             fn.apply(self, arguments);
@@ -73,6 +93,12 @@ App.prototype.addHooks = function () {
     }
     hookIt(API.CHAT_COMMAND, this.onChatCommand);
     hookIt(API.DJ_ADVANCE, this.onDJAdvance);
+    API.on(API.CURATE_UPDATE, this.onCurateUpdate, this);
+}
+
+App.prototype.onCurateUpdate = function (data) {
+    console.log(arguments);
+    API.chatLog(data.user.username + " grabbed \"" + API.getMedia().title + "\"!");
 }
 
 App.prototype.onChatCommand = function (command) {
@@ -130,6 +156,36 @@ App.prototype.autoWoot = function (cmd, args) {
         }
     }
     API.chatLog("AutoWoot: " + (this.autoWootEnabled ? "enabled" : "disabled"));
+}
+
+App.prototype.leaveNext = function () {
+    API.chatLog("Leaving after this track");
+    API.once(API.DJ_ADVANCE, API.djLeave);
+}
+App.prototype.checkLeave = function () {
+    if (this.isCurrentDJ) {
+        this.leaveNext();
+        API.off(API.DJ_ADVANCE, this.checkLeave);
+        API.off(API.DJ_UPDATE, this.checkUpdateForLeave);
+    }
+}
+App.prototype.checkUpdateForLeave = function () {
+    if (!this.isQueued && !this.isCurrentDJ) {
+        API.chatLog("Canceling leaveafter");
+        API.off(API.DJ_ADVANCE, this.checkLeave);
+        API.off(API.DJ_UPDATE, this.checkUpdateForLeave);
+    }
+}
+App.prototype.leaveafter = function () { 
+    if (this.isCurrentDJ) {
+        this.leaveNext();
+    } else {
+        if (this.isQueued) {
+            API.chatLog("Leaving after next track");
+            API.on(API.DJ_ADVANCE, this.checkLeave, this);
+            API.on(API.DJ_UPDATE, this.checkUpdateForLeave, this);
+        }
+    }
 }
 
 App.prototype.printCommands = function (helpCmd) {
