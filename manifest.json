@@ -3,7 +3,7 @@
 
     "name": "plug.dj Tools",
     "description": "A command line with custom tools and actions for plug.dj",
-    "version": "1.0",
+    "version": "0.1",
 
     "permissions": [
         "https://plug.dj/*",
