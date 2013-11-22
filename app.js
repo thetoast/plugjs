@@ -38,10 +38,6 @@ function App() {
         }
     ]);
 
-    if (this.autoWootEnabled) {
-        this.startWooting();
-    }
-
     this.addHooks();
 }
 
@@ -131,31 +127,22 @@ App.prototype.onDJAdvance = function (data) {
             action: 'notify',
             message: "Now Playing: " + media.author + " - " + media.title + " (" + timestamp(media.duration) + ")"
         }, "http://plug.dj");
+        if (this.autoWootEnabled) {
+            this.clickWoot();
+        };
     }
 }
 
-App.prototype.startWooting = function () {
-    this.autoWootEnabled = true;
-    if (!this.wootInterval) {
-        this.wootInterval = setInterval(function () {
-            $("#woot").click();
-        }, 10000);
-    }
-}
-App.prototype.stopWooting = function () {
-    this.autoWootEnabled = false;
-    clearInterval(this.wootInterval);
-    this.wootInterval = undefined;
-}
 App.prototype.autoWoot = function (cmd, args) {
     if (args.length === 1) {
         if (parseInt(args[0]) === 1) {
-            this.startWooting();
+            this.autoWootEnabled = true;
+            this.clickWoot();
         } else {
-            this.stopWooting();
+            this.autoWootEnabled = false;
         }
-    }
     API.chatLog("AutoWoot: " + (this.autoWootEnabled ? "enabled" : "disabled"));
+    }
 }
 
 App.prototype.leaveNext = function () {
@@ -186,6 +173,9 @@ App.prototype.leaveafter = function () {
             API.on(API.DJ_UPDATE, this.checkUpdateForLeave, this);
         }
     }
+}
+App.prototype.clickWoot = function() {
+    $("#woot").click();
 }
 
 App.prototype.printCommands = function (helpCmd) {
