@@ -38,6 +38,10 @@ function App() {
         }
     ]);
 
+    if (this.autoWootEnabled) {
+        this.clickWoot();
+    }
+
     this.addHooks();
 }
 
@@ -141,8 +145,8 @@ App.prototype.autoWoot = function (cmd, args) {
         } else {
             this.autoWootEnabled = false;
         }
-    API.chatLog("AutoWoot: " + (this.autoWootEnabled ? "enabled" : "disabled"));
     }
+    API.chatLog("AutoWoot: " + (this.autoWootEnabled ? "enabled" : "disabled"));
 }
 
 App.prototype.leaveNext = function () {
