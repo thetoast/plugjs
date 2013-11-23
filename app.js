@@ -25,10 +25,12 @@ function App() {
         },
         {
             name: "leaveafter",
-            args: "[1-9|?|cancel]", 
-            desc: "leave after your next track or [1-9] track(s)",
-            help: "Without arguments, leaves the DJ booth or waiting list after you play your next song.  If you are currently playing, it will leave after this song.  \
-            With an int argument, leave after you have played that number of tracks.",
+            args: "[n|?|cancel]", 
+            desc: "leave after your next track or n track(s)",
+            help: "Without arguments, leaves the DJ booth after you play your next song. " +
+                  "With an int argument, leave after you have played that number of tracks. " +
+                  "With '-1' or 'cancel', cancels the leaveafter command. " +
+                  "With '?', prints the number of remaining tracks.",
             func: this.leaveafter
         },
         {
