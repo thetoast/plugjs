@@ -25,13 +25,15 @@ function App() {
         },
         {
             name: "leaveafter",
-            desc: "leave after your next track",
-            help: "Leaves the DJ booth or waiting list after you play your next song.  If you are currently playing, it will leave after this song.",
+            args: "[1-9|?|cancel]", 
+            desc: "leave after your next track or [1-9] track(s)",
+            help: "Without arguments, leaves the DJ booth or waiting list after you play your next song.  If you are currently playing, it will leave after this song.  \
+            With an int argument, leave after you have played that number of tracks.",
             func: this.leaveafter
         },
         {
             name: "?",
-            arg: "[cmd]",
+            args: "[cmd]",
             desc: "lists info on commands",
             help: "Call without parameters to list commands or call with the name of a command to get specific help on that command.",
             func: this.help
@@ -40,6 +42,10 @@ function App() {
 
     if (this.autoWootEnabled) {
         this.clickWoot();
+    }
+
+    if (this.leaveAfterCount >= 0) {
+        this.addCheckLeaveListeners();
     }
 
     this.addHooks();
@@ -73,6 +79,19 @@ App.prototype = Object.create(Object.prototype, {
                 return self.user.id && self.user.id === dj.id;
             });
         },
+    },
+    leaveAfterCount: {
+        get: function () {
+            // make sure we only return an int or null
+            var val = parseInt(localStorage["leaveafter"]);
+            if (isNaN(val)) {
+                val = null;
+            };
+            return val;
+        },
+        set: function (val) {
+            localStorage["leaveafter"] = val;
+        }
     }
 });
 
@@ -149,35 +168,77 @@ App.prototype.autoWoot = function (cmd, args) {
     API.chatLog("AutoWoot: " + (this.autoWootEnabled ? "enabled" : "disabled"));
 }
 
-App.prototype.leaveNext = function () {
-    API.chatLog("Leaving after this track");
-    API.once(API.DJ_ADVANCE, API.djLeave);
-}
 App.prototype.checkLeave = function () {
+    if (this.leaveAfterCount === 0) {
+        this.leaveAfterCount = null;
+        this.removeCheckLeaveListeners();
+        API.djLeave();
+    }
+    this.updateLeaveAfterCount();
+}
+App.prototype.updateLeaveAfterCount = function() {
     if (this.isCurrentDJ) {
-        this.leaveNext();
-        API.off(API.DJ_ADVANCE, this.checkLeave);
-        API.off(API.DJ_UPDATE, this.checkUpdateForLeave);
+        if (this.leaveAfterCount) {
+            this.leaveAfterCount--;
+            this.showLeaveAfterCount();
+        }
     }
 }
 App.prototype.checkUpdateForLeave = function () {
     if (!this.isQueued && !this.isCurrentDJ) {
         API.chatLog("Canceling leaveafter");
-        API.off(API.DJ_ADVANCE, this.checkLeave);
-        API.off(API.DJ_UPDATE, this.checkUpdateForLeave);
+        this.leaveAfterCount = null;
+        this.removeCheckLeaveListeners();
     }
 }
-App.prototype.leaveafter = function () { 
-    if (this.isCurrentDJ) {
-        this.leaveNext();
-    } else {
-        if (this.isQueued) {
-            API.chatLog("Leaving after next track");
-            API.on(API.DJ_ADVANCE, this.checkLeave, this);
-            API.on(API.DJ_UPDATE, this.checkUpdateForLeave, this);
+App.prototype.showLeaveAfterCount = function () {
+    API.chatLog(this.leaveAfterCount > 0 ? 
+                "Leaving after " + this.leaveAfterCount + " more track(s)." :
+                "Leaving after this track.");
+}
+App.prototype.leaveafter = function (cmd, args) { 
+    if (args.length === 1) {
+        var leaveAfterArg = args[0];
+        var leaveAfterCount = parseInt(leaveAfterArg);
+
+        if (!isNaN(leaveAfterCount) && (leaveAfterCount >= 0)) {
+            this.leaveAfterCount = leaveAfterCount;
+            this.addCheckLeaveListeners();
+
+            // RM: don't want to print a message twice...
+            if (!this.isCurrentDJ) {
+                this.showLeaveAfterCount();
+            } else {
+                this.updateLeaveAfterCount();
+            }
+        } else if (leaveAfterArg == "?") {
+            this.showLeaveAfterCount();
+        } else if ((!isNaN(leaveAfterCount) && (leaveAfterCount === -1))
+                   || leaveAfterArg == "cancel") {
+            this.leaveAfterCount = null;
+            this.removeCheckLeaveListeners();
+            API.chatLog("leaveafter cancelled.")
+        } else {
+            API.chatLog("Invalid argument: " + leaveAfterArg, true);
         }
+    } else if (args.length === 0) {
+        this.leaveAfterCount = 1;
+        this.showLeaveAfterCount();
+        this.addCheckLeaveListeners();
+        this.updateLeaveAfterCount();
     }
 }
+
+App.prototype.addCheckLeaveListeners = function() {
+    API.on(API.DJ_ADVANCE, this.checkLeave, this);
+    API.on(API.DJ_UPDATE, this.checkUpdateForLeave, this);
+}
+
+App.prototype.removeCheckLeaveListeners = function() {
+    API.off(API.DJ_ADVANCE, this.checkLeave);
+    API.off(API.DJ_UPDATE, this.checkUpdateForLeave);
+}
+
 App.prototype.clickWoot = function() {
     $("#woot").click();
 }
