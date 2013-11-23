@@ -150,6 +150,7 @@ App.prototype.onDJAdvance = function (data) {
             action: 'notify',
             message: "Now Playing: " + media.author + " - " + media.title + " (" + timestamp(media.duration) + ")"
         }, "http://plug.dj");
+
         if (this.autoWootEnabled) {
             this.clickWoot();
         };
@@ -191,10 +192,14 @@ App.prototype.checkUpdateForLeave = function () {
         this.removeCheckLeaveListeners();
     }
 }
-App.prototype.showLeaveAfterCount() {
-    API.chatLog(this.leaveAfterCount > 0 ? 
-                "Leaving after " + this.leaveAfterCount + " more track(s)." :
-                "Leaving after this track.");
+App.prototype.showLeaveAfterCount = function () {
+    if (this.leaveAfterCount) {
+        API.chatLog("Leaving after " + this.leaveAfterCount + " more track(s).");
+    } else if (this.leaveAfterCount === 0) {
+        API.chatLog("Leaving after this track.");
+    } else {
+        API.chatLog("leaveafter not enabled");
+    }
 }
 App.prototype.leaveafter = function (cmd, args) { 
     if (args.length === 1) {
@@ -223,20 +228,23 @@ App.prototype.leaveafter = function (cmd, args) {
         }
     } else if (args.length === 0) {
         this.leaveAfterCount = 1;
-        this.showLeaveAfterCount();
         this.addCheckLeaveListeners();
         this.updateLeaveAfterCount();
     }
 }
 
 App.prototype.addCheckLeaveListeners = function() {
-    API.on(API.DJ_ADVANCE, this.checkLeave, this);
-    API.on(API.DJ_UPDATE, this.checkUpdateForLeave, this);
+    if (!this.leaveListenersAdded) {
+        this.leaveListenersAdded = true;
+        API.on(API.DJ_ADVANCE, this.checkLeave, this);
+        API.on(API.DJ_UPDATE, this.checkUpdateForLeave, this);
+    }
 }
 
 App.prototype.removeCheckLeaveListeners = function() {
     API.off(API.DJ_ADVANCE, this.checkLeave);
     API.off(API.DJ_UPDATE, this.checkUpdateForLeave);
+    this.leaveListenersAdded = false;
 }
 
 App.prototype.clickWoot = function() {
