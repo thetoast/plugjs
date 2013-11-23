@@ -25,13 +25,15 @@ function App() {
         },
         {
             name: "leaveafter",
-            desc: "leave after your next track",
-            help: "Leaves the DJ booth or waiting list after you play your next song.  If you are currently playing, it will leave after this song.",
+            args : "[1-9|?|cancel]", 
+            desc: "leave after your next track or [1-9] track(s)",
+            help: "Without arguments, leaves the DJ booth or waiting list after you play your next song.  If you are currently playing, it will leave after this song.  \
+            With an int argument, leave after you have played that number of tracks.",
             func: this.leaveafter
         },
         {
             name: "?",
-            arg: "[cmd]",
+            args: "[cmd]",
             desc: "lists info on commands",
             help: "Call without parameters to list commands or call with the name of a command to get specific help on that command.",
             func: this.help
@@ -40,6 +42,11 @@ function App() {
 
     if (this.autoWootEnabled) {
         this.clickWoot();
+    }
+
+    if (!this.leaveAfterCount && this.leaveAfterCount != null) {
+        this.addCheckLeaveListeners();
+        this.checkLeave();
     }
 
     this.addHooks();
@@ -73,6 +80,14 @@ App.prototype = Object.create(Object.prototype, {
                 return self.user.id && self.user.id === dj.id;
             });
         },
+    },
+    leaveAfterCount: {
+        get: function () {
+            return localStorage["leaveafter"];
+        },
+        set: function (val) {
+            localStorage["leaveafter"] = val;
+        }
     }
 });
 
@@ -150,34 +165,68 @@ App.prototype.autoWoot = function (cmd, args) {
 }
 
 App.prototype.leaveNext = function () {
+    this.leaveAfterCount = null;
     API.chatLog("Leaving after this track");
     API.once(API.DJ_ADVANCE, API.djLeave);
 }
 App.prototype.checkLeave = function () {
     if (this.isCurrentDJ) {
-        this.leaveNext();
-        API.off(API.DJ_ADVANCE, this.checkLeave);
-        API.off(API.DJ_UPDATE, this.checkUpdateForLeave);
+        if (this.leaveAfterCount && this.leaveAfterCount > 1) {
+            this.leaveAfterCount--;
+            API.chatLog("Leaving after " + this.leaveAfterCount + " more track(s).")
+        } else {
+            this.leaveNext();
+            this.removeCheckLeaveListeners();
+        }
     }
 }
 App.prototype.checkUpdateForLeave = function () {
     if (!this.isQueued && !this.isCurrentDJ) {
         API.chatLog("Canceling leaveafter");
-        API.off(API.DJ_ADVANCE, this.checkLeave);
-        API.off(API.DJ_UPDATE, this.checkUpdateForLeave);
+        this.leaveAfterCount = null;
+        this.removeCheckLeaveListeners();
     }
 }
-App.prototype.leaveafter = function () { 
-    if (this.isCurrentDJ) {
-        this.leaveNext();
-    } else {
-        if (this.isQueued) {
-            API.chatLog("Leaving after next track");
-            API.on(API.DJ_ADVANCE, this.checkLeave, this);
-            API.on(API.DJ_UPDATE, this.checkUpdateForLeave, this);
+App.prototype.leaveafter = function (cmd, args) { 
+    if (args.length === 1) {
+        var leaveAfterArg = args[0];
+        if (leaveAfterArg.match('^[1-9]$') != null) {
+            this.leaveAfterCount = leaveAfterArg;
+            API.chatLog("Leaving after " + leaveAfterArg + " tracks.");
+            this.addCheckLeaveListeners();
+            this.checkLeave();
+        } else if (leaveAfterArg == "?") {
+            API.chatLog("leaveafter count: " + this.leaveAfterCount);
+        } else if (leaveAfterArg == -1 || leaveAfterArg == "cancel") {
+            this.leaveAfterCount = null;
+            this.removeCheckLeaveListeners();
+            API.chatLog("leaveafter cancelled.")
+        } else {
+            API.chatLog("Argument must be between 1 and 9.")
+        }
+    } else if (args.length === 0) {
+        if (this.isCurrentDJ) {
+            this.leaveNext();
+        } else {
+            if (this.isQueued) {
+                this.leaveAfterCount = 0;
+                API.chatLog("Leaving after next track");
+                this.addCheckLeaveListeners();
+            }
         }
     }
 }
+
+App.prototype.addCheckLeaveListeners = function() {
+    API.on(API.DJ_ADVANCE, this.checkLeave, this);
+    API.on(API.DJ_UPDATE, this.checkUpdateForLeave, this);
+}
+
+App.prototype.removeCheckLeaveListeners = function() {
+    API.off(API.DJ_ADVANCE, this.checkLeave);
+    API.off(API.DJ_UPDATE, this.checkUpdateForLeave);
+}
+
 App.prototype.clickWoot = function() {
     $("#woot").click();
 }
