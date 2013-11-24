@@ -25,10 +25,12 @@ function App() {
         },
         {
             name: "leaveafter",
-            args: "[1-9|?|cancel]", 
-            desc: "leave after your next track or [1-9] track(s)",
-            help: "Without arguments, leaves the DJ booth or waiting list after you play your next song.  If you are currently playing, it will leave after this song.  \
-            With an int argument, leave after you have played that number of tracks.",
+            args: "[n|?|cancel]", 
+            desc: "leave after your next track or n track(s)",
+            help: "Without arguments, leaves the DJ booth after you play your next song. " +
+                  "With an int argument, leave after you have played that number of tracks. " +
+                  "With '-1' or 'cancel', cancels the leaveafter command. " +
+                  "With '?', prints the number of remaining tracks.",
             func: this.leaveafter
         },
         {
@@ -44,7 +46,7 @@ function App() {
         this.clickWoot();
     }
 
-    if (this.leaveAfterCount >= 0) {
+    if (this.leaveAfterCount) {
         this.addCheckLeaveListeners();
     }
 
@@ -150,6 +152,7 @@ App.prototype.onDJAdvance = function (data) {
             action: 'notify',
             message: "Now Playing: " + media.author + " - " + media.title + " (" + timestamp(media.duration) + ")"
         }, "http://plug.dj");
+
         if (this.autoWootEnabled) {
             this.clickWoot();
         };
@@ -192,9 +195,13 @@ App.prototype.checkUpdateForLeave = function () {
     }
 }
 App.prototype.showLeaveAfterCount = function () {
-    API.chatLog(this.leaveAfterCount > 0 ? 
-                "Leaving after " + this.leaveAfterCount + " more track(s)." :
-                "Leaving after this track.");
+    if (this.leaveAfterCount) {
+        API.chatLog("Leaving after " + this.leaveAfterCount + " more track(s).");
+    } else if (this.leaveAfterCount === 0) {
+        API.chatLog("Leaving after this track.");
+    } else {
+        API.chatLog("leaveafter not enabled");
+    }
 }
 App.prototype.leaveafter = function (cmd, args) { 
     if (args.length === 1) {
@@ -223,20 +230,23 @@ App.prototype.leaveafter = function (cmd, args) {
         }
     } else if (args.length === 0) {
         this.leaveAfterCount = 1;
-        this.showLeaveAfterCount();
         this.addCheckLeaveListeners();
         this.updateLeaveAfterCount();
     }
 }
 
 App.prototype.addCheckLeaveListeners = function() {
-    API.on(API.DJ_ADVANCE, this.checkLeave, this);
-    API.on(API.DJ_UPDATE, this.checkUpdateForLeave, this);
+    if (!this.leaveListenersAdded) {
+        this.leaveListenersAdded = true;
+        API.on(API.DJ_ADVANCE, this.checkLeave, this);
+        API.on(API.DJ_UPDATE, this.checkUpdateForLeave, this);
+    }
 }
 
 App.prototype.removeCheckLeaveListeners = function() {
     API.off(API.DJ_ADVANCE, this.checkLeave);
     API.off(API.DJ_UPDATE, this.checkUpdateForLeave);
+    this.leaveListenersAdded = false;
 }
 
 App.prototype.clickWoot = function() {
