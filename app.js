@@ -46,7 +46,7 @@ function App() {
         this.clickWoot();
     }
 
-    if (this.leaveAfterCount) {
+    if (this.leaveAfterCount || this.leaveAfterCount === 0) {
         this.addCheckLeaveListeners();
     }
 
