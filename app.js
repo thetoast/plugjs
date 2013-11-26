@@ -112,6 +112,11 @@ App.prototype = Object.create(Object.prototype, {
         set: function (val) {
             localStorage["leaveafter"] = val;
         }
+    },
+    isAFK: {
+        get: function () {
+            return API.STATUS.AFK === API.getUser().status
+        },
     }
 });
 
@@ -189,30 +194,55 @@ App.prototype.autoWoot = function (cmd, args) {
     API.chatLog("AutoWoot: " + (this.autoWootEnabled ? "enabled" : "disabled"));
 }
 
+// RM -- TODO: handle the case where we've got an existing /leaveafter and we want to go AFK
 App.prototype.brb  = function (cmd, args) {
     if (args.length === 1)
     {
         if (parseInt(args[0]) === 1)
         {
-            API.chatLog("Going AFK");
-            API.sendChat("/em Going AFK...");
-            this.leaveAfterCount = 1;
-            this.addCheckLeaveListeners();
-            this.savedAutoWoot = this.autoWootEnabled;
-            this.autoWootEnabled = false;
-            API.setStatus(API.STATUS.AFK);
+            if (this.isAFK) {
+                API.chatLog("Already AFK");
+            } else {
+                API.chatLog("Going AFK");
+                API.sendChat("/em Going AFK...");
+
+                // RM: Doesn't make sense to /leaveafter unless we're playing somthing.
+                // Should we also /leaveafter if we're just in the queue?
+                // For now, maybe just leave the queue if we're queued but not actively playing?
+                if (this.isCurrentDJ) {
+                    this.leaveAfterCount = 1;
+                    this.addCheckLeaveListeners();
+                } else if (this.isQueued()) {
+                    API.djLeave();
+                }
+
+                this.savedAutoWoot = this.autoWootEnabled;
+                this.autoWootEnabled = false;
+                API.setStatus(API.STATUS.AFK);
+            }
         }
         else
         {
-            API.chatLog("Returning from AFK");
-            API.sendChat("/em Back from AFK.");
-            this.autoWootEnabled = this.savedAutoWoot;
-            API.setStatus(API.STATUS.AVAILABLE);
+            // RM: Should we do something if you're not already
+            // AFK and request to be not AFK? Maybe say you're
+            // already not AFK?  That seems strange though...
+            if (this.isAFK) {
+                API.chatLog("Returning from AFK");
+                API.sendChat("/em Back from AFK.");
+                this.autoWootEnabled = this.savedAutoWoot;
+                API.setStatus(API.STATUS.AVAILABLE);
+
+                // Make sure we woot when coming out
+                // if autowoot was enabled
+                if (this.autoWootEnabled) {
+                    this.clickWoot();
+                }
+            }
         }
     }
     else
     {
-        API.chatLog("AFK: " + ((API.STATUS.AFK === API.getUser().status) ? "enabled" : "disabled"));
+        API.chatLog("AFK: " + (this.isAFK ? "enabled" : "disabled"));
     }
 }
 
