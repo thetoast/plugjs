@@ -3,7 +3,7 @@
 
     "name": "plug.dj Tools",
     "description": "A command line with custom tools and actions for plug.dj",
-    "version": "0.2.1",
+    "version": "0.3",
 
     "permissions": [
         "https://plug.dj/*",
@@ -21,7 +21,8 @@
     "web_accessible_resources": [
         "jquery.js",
         "plugdj.js",
-        "app.js"
+        "app.js",
+        "New.wav"
     ],
 
     "background": {

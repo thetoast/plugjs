@@ -41,6 +41,15 @@ function App() {
             func : this.brb
         },
         {
+            name : "chatsound",
+            args : "[0|1|2|none|mention|all]",
+            desc : "get/set chat sound triggers",
+            help : "Call with 0 or 'none' to silence all chat sounds." +
+                   "Call with 1 or 'mention' to sound on mentions." +
+                   "Call with 2 or 'all' to sound on all chats.",
+            func : this.chatsound
+        },
+        {
             name: "?",
             args: "[cmd]",
             desc: "lists info on commands",
@@ -117,6 +126,19 @@ App.prototype = Object.create(Object.prototype, {
         get: function () {
             return API.STATUS.AFK === API.getUser().status
         },
+    },
+    chatSoundTrigger: {
+        get: function () {
+            var sounds = parseInt(localStorage["chat-sounds"]);
+            if (isNaN(sounds)) {
+                sounds = 1; // defaults to mentions
+                localStorage["chat-sounds"] = sounds;
+            }
+            return sounds;
+        },
+        set: function (val) {
+            localStorage["chat-sounds"] = val;
+        }
     }
 });
 
@@ -128,16 +150,25 @@ App.prototype.registerCommands= function (cmds) {
 }
 
 App.prototype.addHooks = function () {
-    var self = this;
-    // RM: this is probably not necessary since Backbone takes a context with the register
-    function hookIt(event, fn) {
-        API.on(event, function () {
-            fn.apply(self, arguments);
-        });
-    }
-    hookIt(API.CHAT_COMMAND, this.onChatCommand);
-    hookIt(API.DJ_ADVANCE, this.onDJAdvance);
+    API.on(API.CHAT_COMMAND, this.onChatCommand, this);
+    API.on(API.DJ_ADVANCE, this.onDJAdvance, this);
     API.on(API.CURATE_UPDATE, this.onCurateUpdate, this);
+    API.on(API.CHAT, this.onChat, this);
+}
+
+App.prototype.onChat = function (data) {
+    if (!data) return;
+    // skip our own chats
+    if (this.user && data && (data.fromID === this.user.id)) return;
+    // skip if we're not making sounds on any chats
+    if (!this.chatSoundTrigger) return;
+    // skip if we're filtering only mentions and isn't a mention
+    if (!this.isMention(data.message) && (this.chatSoundTrigger === 1)) return;
+
+    window.postMessage({
+        action: 'sound',
+        clip: 'chat'
+    }, "http://plug.dj");
 }
 
 App.prototype.onCurateUpdate = function (data) {
@@ -334,6 +365,46 @@ App.prototype.removeCheckLeaveListeners = function() {
 
 App.prototype.clickWoot = function() {
     $("#woot").click();
+}
+
+App.prototype.isMention = function (msg) {
+    if (!msg) return false;
+
+    // RM -- NOTE: we're treating any occurance of names as a mention.
+    // This makes it so you still get mentions even if the chat message
+    // is missing the @ symbol before your name.
+    // This _will_ generate false positives if your name is something common
+    // like "sandwich" or "song".
+    // TODO: make the presence of @ being required a configurable option
+    return msg.indexOf(this.user.username) >= 0;
+}
+
+App.prototype.chatsound = function (cmd, args) {
+    if (args.length === 1) {
+        var strval = args[0];
+        var intval = parseInt(args[0]);
+        if ((intval === 0) || (strval === 'none')) {
+            this.chatSoundTrigger = 0;
+        } else if ((intval === 1) || (strval === 'mention') || (strval === 'mentions')) {
+            this.chatSoundTrigger = 1;
+        } else if ((intval === 2) || (strval === 'all')) {
+            this.chatSoundTrigger = 2;
+        }
+    }
+
+    var trigger;
+    switch (this.chatSoundTrigger) {
+        case 0:
+            trigger = "none";
+            break;
+        case 1:
+            trigger = "mention";
+            break;
+        case 2:
+            trigger = "all";
+            break;
+    }
+    API.chatLog("chatsounds: " + trigger);
 }
 
 App.prototype.printCommands = function (helpCmd) {
