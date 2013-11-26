@@ -343,7 +343,14 @@ var app;
 var apiInterval = setInterval(function () {
     if (typeof(API) !== "undefined") {
         clearInterval(apiInterval);
-        app = new App();
-        console.log("plug.dj script loaded");
+        // RM: this interval does bad things with two of this plugin loaded...
+        //     I'm just making sure here that we don't accidently create two
+        //     app objects which leads to all kinds of problems.
+        if (!app) {
+            app = new App();
+            console.log("plug.dj script loaded");
+        } else {
+            console.log("interval running again for some reason");
+        }
     }
 }, 1000);
