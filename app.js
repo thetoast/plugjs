@@ -34,6 +34,13 @@ function App() {
             func: this.leaveafter
         },
         {
+            name : "brb",
+            args : "[0|1]",
+            desc : "get/set AFK status",
+            help : "Call without parameters to get AFK status. Call with 0 or 1 to disable/enable AFK status",
+            func : this.brb
+        },
+        {
             name: "?",
             args: "[cmd]",
             desc: "lists info on commands",
@@ -63,6 +70,16 @@ App.prototype = Object.create(Object.prototype, {
         set: function (val) {
             localStorage["auto-woot"] = val;
         }
+    },
+    savedAutoWoot : {
+    	get : function ()
+    	{
+    		return localStorage["saved-auto-woot"] === "true";
+    	},
+    	set : function (val)
+    	{
+    		localStorage["saved-auto-woot"] = val;
+    	}
     },
     isCurrentDJ: {
         get: function () {
@@ -170,6 +187,33 @@ App.prototype.autoWoot = function (cmd, args) {
         }
     }
     API.chatLog("AutoWoot: " + (this.autoWootEnabled ? "enabled" : "disabled"));
+}
+
+App.prototype.brb  = function (cmd, args) {
+    if (args.length === 1)
+    {
+        if (parseInt(args[0]) === 1)
+        {
+            API.chatLog("Going AFK");
+            API.sendChat("/em Going AFK...");
+            this.leaveAfterCount = 1;
+            this.addCheckLeaveListeners();
+            this.savedAutoWoot = this.autoWootEnabled;
+            this.autoWootEnabled = false;
+            API.setStatus(API.STATUS.AFK);
+        }
+        else
+        {
+            API.chatLog("Returning from AFK");
+            API.sendChat("/em Back from AFK.");
+            this.autoWootEnabled = this.savedAutoWoot;
+            API.setStatus(API.STATUS.AVAILABLE);
+        }
+    }
+    else
+    {
+        API.chatLog("AFK: " + ((API.STATUS.AFK === API.getUser().status) ? "enabled" : "disabled"));
+    }
 }
 
 App.prototype.checkLeave = function () {
