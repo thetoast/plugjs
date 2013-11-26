@@ -210,9 +210,8 @@ App.prototype.brb  = function (cmd, args) {
                 // Should we also /leaveafter if we're just in the queue?
                 // For now, maybe just leave the queue if we're queued but not actively playing?
                 if (this.isCurrentDJ) {
-                    this.leaveAfterCount = 1;
-                    this.addCheckLeaveListeners();
-                } else if (this.isQueued()) {
+                    this.leaveafter();
+                } else if (this.isQueued) {
                     API.djLeave();
                 }
 
@@ -279,6 +278,9 @@ App.prototype.showLeaveAfterCount = function () {
     }
 }
 App.prototype.leaveafter = function (cmd, args) { 
+    // lets us call this.leaveafter() without any worries
+    if (!args) args = [];
+
     if (args.length === 1) {
         var leaveAfterArg = args[0];
         var leaveAfterCount = parseInt(leaveAfterArg);
