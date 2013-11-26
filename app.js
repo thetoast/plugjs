@@ -73,9 +73,9 @@ App.prototype = Object.create(Object.prototype, {
     },
     isCurrentDJ: {
         get: function () {
-            var djs = API.getDJs();
-            if (djs.length) {
-                return this.user && this.user.id === djs[0].id;
+            var dj = API.getDJ();
+            if (dj) {
+                return this.user && (this.user.id === dj.id);
             } else {
                 return false;
             }
@@ -83,10 +83,11 @@ App.prototype = Object.create(Object.prototype, {
     },
     isQueued: {
         get: function () {
-            var self = this;
-            return API.getDJs().some(function (dj) {
-                return self.user.id && self.user.id === dj.id;
-            });
+            if (this.user) {
+                return API.getWaitListPosition(this.user.id) >= 0;
+            } else {
+                return false;
+            }
         },
     },
     leaveAfterCount: {
@@ -264,7 +265,13 @@ App.prototype.leaveafter = function (cmd, args) {
     } else if (args.length === 0) {
         this.leaveAfterCount = 1;
         this.addCheckLeaveListeners();
-        this.updateLeaveAfterCount();
+
+        // RM: don't want to print a message twice...
+        if (!this.isCurrentDJ) {
+            this.showLeaveAfterCount();
+        } else {
+            this.updateLeaveAfterCount();
+        }
     }
 }
 
@@ -272,13 +279,13 @@ App.prototype.addCheckLeaveListeners = function() {
     if (!this.leaveListenersAdded) {
         this.leaveListenersAdded = true;
         API.on(API.DJ_ADVANCE, this.checkLeave, this);
-        API.on(API.DJ_UPDATE, this.checkUpdateForLeave, this);
+        API.on(API.WAIT_LIST_UPDATE, this.checkUpdateForLeave, this);
     }
 }
 
 App.prototype.removeCheckLeaveListeners = function() {
     API.off(API.DJ_ADVANCE, this.checkLeave);
-    API.off(API.DJ_UPDATE, this.checkUpdateForLeave);
+    API.off(API.WAIT_LIST_UPDATE, this.checkUpdateForLeave);
     this.leaveListenersAdded = false;
 }
 
