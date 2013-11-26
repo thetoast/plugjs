@@ -71,6 +71,16 @@ App.prototype = Object.create(Object.prototype, {
             localStorage["auto-woot"] = val;
         }
     },
+    savedAutoWoot : {
+    	get : function ()
+    	{
+    		return localStorage["saved-auto-woot"] === "true";
+    	},
+    	set : function (val)
+    	{
+    		localStorage["saved-auto-woot"] = val;
+    	}
+    },
     isCurrentDJ: {
         get: function () {
             var dj = API.getDJ();
@@ -184,18 +194,19 @@ App.prototype.brb  = function (cmd, args) {
     {
         if (parseInt(args[0]) === 1)
         {
-
             API.chatLog("Going AFK");
             API.sendChat("/em Going AFK...");
             this.leaveAfterCount = 1;
             this.addCheckLeaveListeners();
-            this.updateLeaveAfterCount();
+            this.savedAutoWoot = this.autoWootEnabled;
+            this.autoWootEnabled = false;
             API.setStatus(API.STATUS.AFK);
         }
         else
         {
             API.chatLog("Returning from AFK");
             API.sendChat("/em Back from AFK.");
+            this.autoWootEnabled = this.savedAutoWoot;
             API.setStatus(API.STATUS.AVAILABLE);
         }
     }
