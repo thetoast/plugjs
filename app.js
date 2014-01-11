@@ -14,7 +14,6 @@ function timestamp(seconds) {
 }
 
 function App() {
-    this.user = API.getUser();
     this.registerCommands([
         {
             name: "autowoot",
@@ -72,6 +71,11 @@ function App() {
 App.prototype = Object.create(Object.prototype, {
     constructor: App,
     commands: { value: {} },
+    user : {
+        get: function () {
+            return API.getUser();
+        }
+    },
     autoWootEnabled: {
         get: function () {
             return localStorage["auto-woot"] === "true";
